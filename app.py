@@ -23,6 +23,18 @@ def process_query():
     return arguments
 
 
+@app.route('/api/user', methods=['GET'])
+def user():
+    credentials = utils.load_json(CREDENTIALS_PATH)
+    flickr.set_keys(api_key=credentials["api_key"],
+                    api_secret=credentials["api_secret"])
+    username = f.request.args.get('username')
+    person = flickr.Person.findByUserName(username)
+    photos = person.getPublicPhotos()
+    return f.jsonify({
+        "result": username})
+
+
 @app.route('/api/search', methods=['GET'])
 def search():
     credentials = utils.load_json(CREDENTIALS_PATH)
