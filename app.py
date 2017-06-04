@@ -12,27 +12,21 @@ app = f.Flask(__name__)
 
 def process_query():
     arguments = {}
-    arguments["tags"] = utils.process_keys(f.request.args.get('keys'))
-    arguments["since"] = utils.get_timestamp_days_ago(
+    tags = f.request.args.get('keys')
+    arguments["min_upload_date"] = utils.get_timestamp_days_ago(
         f.request.args.get('days') or DEFAULT_DAYS)
     geo = f.request.args.get('geo')
+    user = f.request.args.get('user')
     if geo and geo.lower() == "true":
-        arguments["geo"] = True
-    else:
-        arguments["geo"] = False
+        arguments["has_geo"] = True
+    if user:
+        person = flickr.Person.findByUserName(user)
+        arguments["user_id"] = person.id
+    if tags:
+        arguments["text"] = utils.process_keys(tags)
+    arguments["license"] = "4,5"
+    print(arguments)
     return arguments
-
-
-@app.route('/api/user', methods=['GET'])
-def user():
-    credentials = utils.load_json(CREDENTIALS_PATH)
-    flickr.set_keys(api_key=credentials["api_key"],
-                    api_secret=credentials["api_secret"])
-    username = f.request.args.get('username')
-    person = flickr.Person.findByUserName(username)
-    photos = person.getPublicPhotos()
-    return f.jsonify({
-        "result": username})
 
 
 @app.route('/api/search', methods=['GET'])
@@ -41,25 +35,21 @@ def search():
     flickr.set_keys(api_key=credentials["api_key"],
                     api_secret=credentials["api_secret"])
     query = process_query()
+    walkers = utils.construct_walkers(query)
+    print("created {} walkers".format(len(walkers)))
     hits = []
-    for tag in query["tags"]:
-        arguments = {"keyword": tag,
-                     "since": query["since"],
-                     "geo": query["geo"]
-                     }
-        walker = utils.make_walker(arguments)
-        walker_length = walker.__len__()
+    for w in walkers:
+        walker_length = w.__len__()
+        print("Walker with {} items.".format(walker_length))
         if walker_length == 0:
-            return "nope"
+            pass
         else:
             for x in range(walker_length):
-                # for x in range(3):
-                photo = walker.next()
+                photo = w.next()
+                print(photo.title)
                 photo_info = utils.get_photo_info(photo)
                 hits.append(photo_info)
-    return f.jsonify({'keys': query["tags"],
-                      "since": query["since"],
-                      "hits": hits})
+    return f.jsonify({"_query": query, "hits": hits})
 
 
 if __name__ == '__main__':

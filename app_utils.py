@@ -35,9 +35,23 @@ def get_photo_info(photo):
     return photo_dict
 
 
+def construct_walkers(query):
+    print(query)
+    walkers = []
+    if query.get("text"):
+        for tag in query["text"]:
+            print("making a walker for tag ", tag)
+            query["text"] = tag
+            walker = make_walker(query)
+            walkers.append(walker)
+            print("created walker")
+    else:
+        walker = make_walker(query)
+        walkers.append(walker)
+    return walkers
+
+
 def make_walker(arguments):
-    return flickr.Walker(flickr.Photo.search,
-                         text=arguments["keyword"],
-                         license="4,5",
-                         min_upload_date=arguments["since"],
-                         has_geo=arguments["geo"])
+    print(arguments)
+    walker = flickr.Walker(flickr.Photo.search, **arguments)
+    return walker
